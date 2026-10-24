@@ -258,60 +258,57 @@ def insertintotable():
         return
 
     #******************** ARIMA SECTION ********************
+    
     def ARIMA_ALGO(df):
-        uniqueVals = df["Code"].unique()  
-        len(uniqueVals)
-        df=df.set_index("Code")
-        #for daily basis
+        uniqueVals = df["Code"].unique()
+        df = df.set_index("Code")
+
         def parser(x):
-            return datetime.strptime(x, '%Y-%m-%d')
-        def arima_model(train, test):
-            history = [x for x in train]
-            predictions = list()
-            for t in range(len(test)):
-                model = ARIMA(history, order=(6,1 ,0))
-                model_fit = model.fit()
-                output = model_fit.forecast()
-                yhat = output[0]
-                predictions.append(yhat)
-                obs = test[t]
-                history.append(obs)
-            return predictions
-        for company in uniqueVals[:10]:
-            data=(df.loc[company,:]).reset_index()
+            return datetime.strptime(str(x)[:10], '%Y-%m-%d')
+
+        for company in uniqueVals[:1]:
+            data = (df.loc[company, :]).reset_index()
             data['Price'] = data['Close']
-            Quantity_date = data[['Price','Date']]
-            Quantity_date.index = Quantity_date['Date'].map(lambda x: parser(x))
-            Quantity_date['Price'] = Quantity_date['Price'].map(lambda x: float(x))
-            Quantity_date = Quantity_date.fillna(Quantity_date.bfill())
-            Quantity_date = Quantity_date.drop(['Date'],axis =1)
-            fig = plt.figure(figsize=(7.2,4.8),dpi=65)
+            Quantity_date = data[['Price', 'Date']].copy()
+            Quantity_date.index = Quantity_date['Date'].map(parser)
+            Quantity_date['Price'] = Quantity_date['Price'].astype(float)
+            Quantity_date = Quantity_date.bfill().ffill()
+            Quantity_date = Quantity_date.drop(columns=['Date'])
+
+            quantity = Quantity_date['Price'].values
+            size = int(len(quantity) * 0.80)
+            train, test = quantity[:size], quantity[size:]
+
+            if len(train) < 10 or len(test) < 2:
+                raise ValueError("Not enough historical stock data for ARIMA prediction.")
+
+            # Fit ARIMA only once instead of refitting for every test day.
+            model = ARIMA(train, order=(2, 1, 0))
+            model_fit = model.fit()
+            predictions = model_fit.forecast(steps=len(test))
+
+            # Save stock trend graph.
+            fig = plt.figure(figsize=(7.2, 4.8), dpi=65)
             plt.plot(Quantity_date)
             plt.savefig('static/Trends.png')
             plt.close(fig)
-            
-            quantity = Quantity_date.values
-            size = int(len(quantity) * 0.80)
-            train, test = quantity[0:size], quantity[size:len(quantity)]
-            #fit in model
-            predictions = arima_model(train, test)
-            
-            #plot graph
-            fig = plt.figure(figsize=(7.2,4.8),dpi=65)
-            plt.plot(test,label='Actual Price')
-            plt.plot(predictions,label='Predicted Price')
+
+            # Save actual vs predicted graph.
+            fig = plt.figure(figsize=(7.2, 4.8), dpi=65)
+            plt.plot(test, label='Actual Price')
+            plt.plot(predictions, label='Predicted Price')
             plt.legend(loc=4)
             plt.savefig('static/ARIMA.png')
             plt.close(fig)
-            print()
-            print("##############################################################################")
-            arima_pred=predictions[-2]
-            print("Tomorrow's",quote," Closing Price Prediction by ARIMA:",arima_pred)
-            #rmse calculation
+
+            arima_pred = float(predictions[-1])
             error_arima = math.sqrt(mean_squared_error(test, predictions))
-            print("ARIMA RMSE:",error_arima)
-            print("##############################################################################")
+
+            print("Tomorrow's", company, "Closing Price Prediction by ARIMA:", arima_pred)
+            print("ARIMA RMSE:", error_arima)
+
             return arima_pred, error_arima
+
         
         
 
