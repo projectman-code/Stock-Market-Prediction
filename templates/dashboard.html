@@ -1,0 +1,966 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>JKS | Market Dashboard</title>
+
+    <!-- Existing Home page theme -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='font-awesome.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='simple-line-icons.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='et-line-font.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='menuzord.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='responsive.css') }}">
+
+    <style>
+        /* Dashboard-specific layout; colours inherit from the JKS theme */
+        body {
+            background: #fff;
+            color: #333;
+            font-family: Arial, sans-serif;
+        }
+
+        .dashboard-page {
+            min-height: 100vh;
+        }
+
+        .dashboard-nav {
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            padding: 12px 0;
+        }
+
+        .dashboard-nav .brand {
+            display: inline-block;
+            font-size: 23px;
+            font-weight: bold;
+            color: #333;
+            text-decoration: none;
+            padding: 8px 0;
+        }
+
+        .dashboard-nav .brand span {
+            color: #d92332;
+        }
+
+        .dashboard-nav .nav-links {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .dashboard-nav .nav-links a {
+            display: inline-block;
+            padding: 12px 16px;
+            color: #333;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .dashboard-nav .nav-links a:hover,
+        .dashboard-nav .nav-links a.active {
+            color: #d92332;
+        }
+
+        .dashboard-banner {
+            background: linear-gradient(120deg, #242424, #555);
+            color: #fff;
+            padding: 45px 0;
+            text-align: center;
+        }
+
+        .dashboard-banner h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0 0 12px;
+        }
+
+        .dashboard-banner p {
+            margin: 0;
+            color: #f1f1f1;
+        }
+
+        .dashboard-content {
+            padding-top: 35px;
+            padding-bottom: 45px;
+        }
+
+        .section-heading {
+            font-size: 23px;
+            font-weight: 700;
+            margin: 0 0 22px;
+            color: #333;
+        }
+
+        .dashboard-card {
+            height: 100%;
+            min-height: 145px;
+            padding: 23px;
+            margin-bottom: 25px;
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            border-top: 3px solid #d92332;
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0,0,0,.05);
+        }
+
+        .dashboard-card .card-icon {
+            font-size: 25px;
+            color: #d92332;
+            margin-bottom: 15px;
+        }
+
+        .dashboard-card h3 {
+            font-size: 17px;
+            font-weight: 700;
+            margin: 0 0 12px;
+            color: #333;
+        }
+
+        .dashboard-card .card-value {
+            font-size: 23px;
+            font-weight: 700;
+            color: #d92332;
+        }
+
+        .dashboard-card p {
+            color: #777;
+            font-size: 13px;
+            line-height: 1.7;
+            margin: 10px 0 0;
+        }
+
+        .dashboard-panel {
+            padding: 25px;
+            margin-bottom: 25px;
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0,0,0,.04);
+        }
+
+        .dashboard-panel h2 {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0 0 20px;
+            color: #333;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        .status-row:last-child {
+            border-bottom: 0;
+        }
+
+        .status-label {
+            color: #555;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 3px;
+            background: #e7f5eb;
+            color: #287a3d;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .status-badge.paused {
+            background: #fff1dd;
+            color: #96600b;
+        }
+
+        .analysis-panel {
+            border-top: 3px solid #d92332;
+        }
+
+        .analysis-panel p {
+            color: #777;
+            font-size: 14px;
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }
+
+        .analysis-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .analysis-form input {
+            flex: 1;
+            min-width: 220px;
+            height: 46px;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            background: #fff;
+            color: #333;
+        }
+
+        .analysis-form input:focus {
+            border-color: #d92332;
+            outline: none;
+        }
+
+        .analysis-form button {
+            min-height: 46px;
+            padding: 10px 22px;
+            border: 0;
+            border-radius: 3px;
+            background: #d92332;
+            color: #fff;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .analysis-form button:hover {
+            background: #b91d2a;
+        }
+
+        .trend-placeholder {
+            padding: 30px 15px;
+            text-align: center;
+            background: #fafafa;
+            border: 1px dashed #ddd;
+            color: #777;
+            line-height: 1.8;
+        }
+
+        .dashboard-note {
+            color: #777;
+            font-size: 12px;
+            line-height: 1.8;
+            margin-top: 10px;
+        }
+
+        .dashboard-footer {
+            padding: 22px 0;
+            background: #222;
+            color: #ddd;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .dashboard-footer a {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .dashboard-footer a:hover {
+            color: #ef646e;
+        }
+
+        @media (max-width: 767px) {
+            .dashboard-nav .brand {
+                margin-bottom: 8px;
+            }
+
+            .dashboard-nav .nav-links {
+                justify-content: flex-start;
+            }
+
+            .dashboard-nav .nav-links a {
+                padding: 9px 10px;
+            }
+
+            .dashboard-banner {
+                padding: 32px 15px;
+            }
+
+            .dashboard-banner h1 {
+                font-size: 26px;
+            }
+
+            .dashboard-content {
+                padding-top: 25px;
+            }
+
+            .dashboard-panel {
+                padding: 18px;
+            }
+        }
+
+        
+/* New market dashboard styling */
+.market-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.market-controls input,
+.market-controls select {
+    min-height: 42px;
+    padding: 9px 12px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    background: #fff;
+    color: #333;
+}
+
+.market-controls button {
+    padding: 10px 17px;
+    border: none;
+    border-radius: 3px;
+    background: #d92332;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.market-stat {
+    min-height: 110px;
+    padding: 18px;
+    margin-bottom: 15px;
+    border: 1px solid #e5e5e5;
+    border-top: 3px solid #d92332;
+    border-radius: 4px;
+    background: #fff;
+}
+
+.stat-label {
+    display: block;
+    color: #777;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    display: block;
+    color: #333;
+    font-size: 22px;
+    font-weight: bold;
+    overflow-wrap: anywhere;
+}
+
+.positive-change {
+    color: #287a3d !important;
+}
+
+.negative-change {
+    color: #d92332 !important;
+}
+
+#watchlistBody td,
+#watchlistBody th {
+    padding: 12px 10px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+}
+
+#watchlistBody button {
+    background: #d92332;
+    color: #fff;
+    border: none;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+#marketMessage,
+#marketUpdated,
+#watchlistMessage,
+#comparisonMessage {
+    color: #777;
+    font-size: 13px;
+    margin: 12px 0;
+}
+
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+<div class="dashboard-page">
+
+    <!-- Navigation -->
+    <nav class="dashboard-nav">
+        <div class="container">
+            <div class="row">
+                <div class="col-sm-4">
+                    <a class="brand" href="{{ url_for('index') }}">
+                        JKS <span>MARKET</span>
+                    </a>
+                </div>
+
+                <div class="col-sm-8">
+                    <ul class="nav-links">
+                        <li>
+                            <a href="{{ url_for('index') }}">
+                                <i class="fa fa-home"></i> HOME
+                            </a>
+                        </li>
+                        <li>
+                            <a class="active" href="{{ url_for('dashboard') }}">
+                                <i class="fa fa-dashboard"></i> DASHBOARD
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="dashboard-banner">
+        <div class="container">
+            <h1>STOCK MARKET DASHBOARD</h1>
+            <p>Analyze stock symbols using your existing prediction system.</p>
+        </div>
+    </header>
+
+    <main class="container dashboard-content">
+
+        <!-- Overview -->
+        <h2 class="section-heading">Analytics Overview</h2>
+
+        <div class="row">
+            <div class="col-md-3 col-sm-6">
+                <article class="dashboard-card">
+                    <div class="card-icon"><i class="fa fa-line-chart"></i></div>
+                    <h3>Historical Data</h3>
+                    <div class="card-value">Analysis</div>
+                    <p>Review historical stock prices through the prediction workflow.</p>
+                </article>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <article class="dashboard-card">
+                    <div class="card-icon"><i class="fa fa-bar-chart"></i></div>
+                    <h3>ARIMA Model</h3>
+                    <div class="card-value">Available</div>
+                    <p>Time-series forecasting in the existing backend.</p>
+                </article>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <article class="dashboard-card">
+                    <div class="card-icon"><i class="fa fa-calculator"></i></div>
+                    <h3>Linear Regression</h3>
+                    <div class="card-value">Available</div>
+                    <p>Regression-based prediction in the existing backend.</p>
+                </article>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <article class="dashboard-card">
+                    <div class="card-icon"><i class="fa fa-cogs"></i></div>
+                    <h3>LSTM Model</h3>
+                    <div class="card-value">Paused</div>
+                    <p>Unavailable until the dependency issue is fixed.</p>
+                </article>
+            </div>
+        </div>
+
+        <!-- Prediction form -->
+        <section class="dashboard-panel analysis-panel">
+            <h2><i class="fa fa-search"></i> Analyze a Stock</h2>
+            <p>
+                Enter a supported stock ticker to run your existing prediction workflow.
+                Examples for Indian stocks: TATASTEEL.NS or RELIANCE.NS.
+            </p>
+
+            <form class="analysis-form"
+                  action="{{ url_for('insertintotable') }}" method="POST">
+                <input type="text" name="nm" required
+                       placeholder="Enter stock symbol, e.g. TATASTEEL.NS"
+                       aria-label="Stock symbol">
+                <button type="submit">
+                    <i class="fa fa-line-chart"></i> PREDICT STOCK
+                </button>
+            </form>
+        </section>
+
+        <!-- NEW STOCK MARKET SECTION -->
+<section class="dashboard-panel" id="market">
+    <h2>Real Market Data</h2>
+
+<div class="market-controls">
+    <input id="marketSymbol"
+           type="text"
+           value="RELIANCE.NS"
+           placeholder="Enter stock symbol">
+
+    <select id="marketPeriod">
+        <option value="1mo">1 Month</option>
+        <option value="3mo">3 Months</option>
+        <option value="6mo">6 Months</option>
+        <option value="1y" selected>1 Year</option>
+    </select>
+
+    <button type="button" id="loadMarketBtn">
+        LOAD STOCK
+    </button>
+</div>
+
+<p id="marketMessage">Waiting for stock data...</p>
+<p id="marketUpdated"></p>
+<h2>Historical Price Chart</h2>
+
+<div style="height:320px; position:relative;">
+    <canvas id="historyChart"></canvas>
+</div>
+
+<p>
+    Source: Yahoo Finance. Prices show historical market data
+    and may be delayed.
+</p>
+
+<div class="row">
+    <div class="col-md-3 col-sm-6">
+        <div class="market-stat">
+            <span class="stat-label">Latest Close (₹)</span>
+            <span class="stat-value" id="latestPrice">—</span>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+        <div class="market-stat">
+            <span class="stat-label">Daily Change</span>
+            <span class="stat-value" id="dailyChange">—</span>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+        <div class="market-stat">
+            <span class="stat-label">Change (%)</span>
+            <span class="stat-value" id="dailyPercent">—</span>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+        <div class="market-stat">
+            <span class="stat-label">Volume</span>
+            <span class="stat-value" id="latestVolume">—</span>
+        </div>
+    </div>
+</div>
+</section>
+
+
+<!-- INDIAN STOCK WATCHLIST -->
+<section class="dashboard-panel">
+    <h2>Indian Stock Watchlist</h2>
+
+    <div style="width:100%; overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse;">
+            <thead>
+                <tr>
+                    <th>Company</th>
+                    <th>Symbol</th>
+                    <th>Latest Close (₹)</th>
+                    <th>Daily Change</th>
+                    <th>Change (%)</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+
+            <tbody id="watchlistBody">
+                <tr>
+                    <td colspan="6">Loading watchlist...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <p id="watchlistMessage">
+        Stock quotes will appear here.
+    </p>
+</section>
+
+
+<!-- ACTUAL VS PREDICTED -->
+<section class="dashboard-panel">
+    <h2>Actual vs Predicted Prices</h2>
+
+    <div class="market-controls">
+        <input
+            id="comparisonSymbol"
+            type="text"
+            value="RELIANCE.NS"
+            placeholder="Enter stock symbol">
+
+        <button type="button" id="loadComparisonBtn">
+            COMPARE PRICES
+        </button>
+    </div>
+
+    <p id="comparisonMessage">
+        Historical comparison will appear here.
+    </p>
+
+    <div style="height:320px; position:relative;">
+        <canvas id="comparisonChart"></canvas>
+    </div>
+
+    <div class="row">
+        <div class="col-sm-6">
+            <div class="market-stat">
+                <span class="stat-label">Historical RMSE (₹)</span>
+                <span class="stat-value" id="comparisonRmse">—</span>
+            </div>
+        </div>
+
+        <div class="col-sm-6">
+            <div class="market-stat">
+                <span class="stat-label">Historical MAE (₹)</span>
+                <span class="stat-value" id="comparisonMae">—</span>
+            </div>
+        </div>
+    </div>
+
+    <p>
+        This chart compares historical prices with model estimates.
+        Past performance does not guarantee future results.
+    </p>
+</section>
+
+
+
+        <!-- Model status and chart note -->
+        <div class="row">
+            <div class="col-md-6">
+                <section class="dashboard-panel">
+                    <h2><i class="fa fa-cogs"></i> Prediction Model Status</h2>
+
+                    <div class="status-row">
+                        <span class="status-label">ARIMA</span>
+                        <span class="status-badge">AVAILABLE</span>
+                    </div>
+
+                    <div class="status-row">
+                        <span class="status-label">Linear Regression</span>
+                        <span class="status-badge">AVAILABLE</span>
+                    </div>
+
+                    <div class="status-row">
+                        <span class="status-label">LSTM</span>
+                        <span class="status-badge paused">PAUSED</span>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-md-6">
+                <section class="dashboard-panel">
+                    <h2><i class="fa fa-area-chart"></i> Market Trend</h2>
+                    <div class="trend-placeholder">
+                        <i class="fa fa-bar-chart fa-3x"></i>
+                        <p>
+                            The dashboard does not display a live market feed.
+                            Run a stock analysis to view the prediction results.
+                        </p>
+                    </div>
+                    <p class="dashboard-note">
+                        No sample chart is presented as real market data.
+                    </p>
+                </section>
+            </div>
+        </div>
+
+        <!-- Workflow -->
+        <section class="dashboard-panel">
+            <h2><i class="fa fa-list-alt"></i> Prediction Workflow</h2>
+
+            <div class="status-row">
+                <span class="status-label">Historical price analysis</span>
+                <span class="status-badge">SUPPORTED</span>
+            </div>
+
+            <div class="status-row">
+                <span class="status-label">ARIMA forecast</span>
+                <span class="status-badge">AVAILABLE</span>
+            </div>
+
+            <div class="status-row">
+                <span class="status-label">Linear Regression forecast</span>
+                <span class="status-badge">AVAILABLE</span>
+            </div>
+
+            <div class="status-row">
+                <span class="status-label">LSTM forecast</span>
+                <span class="status-badge paused">PAUSED</span>
+            </div>
+
+            <p class="dashboard-note">
+                Predictions are estimates based on historical data and are not financial advice.
+                Verify results before making investment decisions.
+            </p>
+        </section>
+
+    </main>
+
+    <footer class="dashboard-footer">
+        <div class="container">
+            JKS Stock Market Prediction &nbsp; | &nbsp;
+            <a href="{{ url_for('index') }}">Home</a>
+            &nbsp; | &nbsp;
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        </div>
+    </footer>
+
+</div>
+
+
+<script>
+async function loadMarket() {
+    const symbol = document.getElementById("marketSymbol").value.trim();
+    const period = document.getElementById("marketPeriod").value;
+    const message = document.getElementById("marketMessage");
+
+    if (!symbol) {
+        message.textContent = "Please enter a stock symbol.";
+        return;
+    }
+
+    message.textContent = "Loading stock data...";
+
+    try {
+        const response = await fetch(
+            "/api/stock/" + encodeURIComponent(symbol) +
+            "?period=" + encodeURIComponent(period)
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Unable to load stock data.");
+        }
+
+        document.getElementById("latestPrice").textContent =
+            "₹" + data.latest_price.toLocaleString("en-IN", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+
+        document.getElementById("dailyChange").textContent =
+            (data.change > 0 ? "+" : "") + "₹" + data.change.toFixed(2);
+
+        document.getElementById("dailyPercent").textContent =
+            (data.change_pct > 0 ? "+" : "") + data.change_pct.toFixed(2) + "%";
+
+        document.getElementById("latestVolume").textContent =
+            data.volume.toLocaleString("en-IN");
+
+        document.getElementById("marketUpdated").textContent =
+            "Symbol: " + data.symbol +
+            " | Latest available date: " + data.last_updated;
+
+        const ctx = document.getElementById("historyChart").getContext("2d");
+
+        if (window.historyStockChart) {
+            window.historyStockChart.destroy();
+        }
+
+        window.historyStockChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: data.prices.map(item => item.date),
+                datasets: [{
+                    label: data.symbol + " Closing Price (₹)",
+                    data: data.prices.map(item => item.close),
+                    borderColor: "#d92332",
+                    backgroundColor: "rgba(217, 35, 50, 0.08)",
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: true,
+                    tension: 0.15
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+
+        message.textContent = "Market data loaded successfully.";
+
+    } catch (error) {
+        message.textContent = "Error: " + error.message;
+    }
+}
+
+document.getElementById("loadMarketBtn")
+    .addEventListener("click", loadMarket);
+
+document.getElementById("marketPeriod")
+    .addEventListener("change", loadMarket);
+
+loadMarket();
+</script>
+
+
+<script>
+async function loadWatchlist() {
+    const body = document.getElementById("watchlistBody");
+    body.innerHTML = "<tr><td colspan='6'>Loading stocks...</td></tr>";
+
+    try {
+        const response = await fetch("/api/watchlist");
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Unable to load watchlist.");
+        }
+
+        body.replaceChildren();
+
+        data.stocks.forEach(stock => {
+            const row = document.createElement("tr");
+
+            function addCell(value) {
+                const cell = document.createElement("td");
+                cell.textContent = value;
+                row.appendChild(cell);
+            }
+
+            addCell(stock.name);
+            addCell(stock.symbol);
+
+            if (stock.error) {
+                addCell("Unavailable");
+                addCell("—");
+                addCell("—");
+            } else {
+                addCell("₹" + Number(stock.price).toFixed(2));
+                addCell(
+                    (stock.change > 0 ? "+" : "") +
+                    "₹" + Number(stock.change).toFixed(2)
+                );
+                addCell(
+                    (stock.change_pct > 0 ? "+" : "") +
+                    Number(stock.change_pct).toFixed(2) + "%"
+                );
+            }
+
+            const actionCell = document.createElement("td");
+            const button = document.createElement("button");
+            button.textContent = "View";
+
+            button.addEventListener("click", () => {
+                document.getElementById("marketSymbol").value = stock.symbol;
+                loadMarket();
+                document.getElementById("market").scrollIntoView({
+                    behavior: "smooth"
+                });
+            });
+
+            actionCell.appendChild(button);
+            row.appendChild(actionCell);
+            body.appendChild(row);
+        });
+
+        document.getElementById("watchlistMessage").textContent =
+            "Latest available quotes from Yahoo Finance.";
+
+    } catch (error) {
+        body.innerHTML =
+            "<tr><td colspan='6'>Unable to load watchlist.</td></tr>";
+        document.getElementById("watchlistMessage").textContent =
+            error.message;
+    }
+}
+
+async function loadComparison() {
+    const symbol = document.getElementById("comparisonSymbol")
+        .value.trim();
+
+    const message = document.getElementById("comparisonMessage");
+
+    if (!symbol) {
+        message.textContent = "Enter a stock symbol first.";
+        return;
+    }
+
+    message.textContent = "Calculating historical comparison...";
+
+    try {
+        const response = await fetch(
+            "/api/prediction-comparison/" + encodeURIComponent(symbol)
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Comparison failed.");
+        }
+
+        document.getElementById("comparisonRmse").textContent =
+            "₹" + Number(data.rmse).toFixed(2);
+
+        document.getElementById("comparisonMae").textContent =
+            "₹" + Number(data.mae).toFixed(2);
+
+        if (window.comparisonStockChart) {
+            window.comparisonStockChart.destroy();
+        }
+
+        window.comparisonStockChart = new Chart(
+            document.getElementById("comparisonChart").getContext("2d"),
+            {
+                type: "line",
+                data: {
+                    labels: data.dates,
+                    datasets: [
+                        {
+                            label: "Actual Price (₹)",
+                            data: data.actual,
+                            borderColor: "#333333",
+                            borderWidth: 2,
+                            pointRadius: 2
+                        },
+                        {
+                            label: "Predicted Price (₹)",
+                            data: data.predicted,
+                            borderColor: "#d92332",
+                            borderWidth: 2,
+                            borderDash: [6, 4],
+                            pointRadius: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            }
+        );
+
+        message.textContent =
+            data.symbol + " — historical Linear Regression comparison. " +
+            data.note;
+
+    } catch (error) {
+        message.textContent = "Comparison error: " + error.message;
+    }
+}
+
+document.getElementById("loadComparisonBtn")
+    .addEventListener("click", loadComparison);
+
+loadWatchlist();
+loadComparison();
+</script>
+
+
+</body>
+</html>

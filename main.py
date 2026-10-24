@@ -1,16 +1,18 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 Created on Fri Sep 27 14:36:49 2019
 
 @author: Kaushik
 """
 #**************** IMPORT PACKAGES ********************
-from flask import Flask, render_template, request, flash, redirect, url_for
+from flask import Flask, render_template, request, flash, redirect, url_for, jsonify
 from alpha_vantage.timeseries import TimeSeries
 import pandas as pd
 import numpy as np
 from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import mean_squared_error
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
 import math, random
@@ -48,34 +50,211 @@ def add_header(response):
 def index():
    return render_template('index.html')
 
+@app.route('/dashboard')
+def dashboard():
+    return render_template('dashboard.html')
+
+# Real Market Data API
+
+DASHBOARD_WATCHLIST = {
+    "RELIANCE.NS": "Reliance",
+    "TCS.NS": "TCS",
+    "TATASTEEL.NS": "Tata Steel",
+    "INFY.NS": "Infosys",
+    "HDFCBANK.NS": "HDFC Bank"
+}
+
+
+def fetch_stock_history(symbol, period="1y"):
+    allowed_periods = {"5d", "1mo", "3mo", "6mo", "1y"}
+
+    if period not in allowed_periods:
+        period = "1y"
+
+    symbol = symbol.strip().upper()
+
+    if not re.fullmatch(r"[A-Z0-9.^=_-]{1,30}", symbol):
+        raise ValueError("Invalid stock symbol.")
+
+    data = yf.Ticker(symbol).history(
+        period=period,
+        interval="1d",
+        auto_adjust=False
+    )
+
+    if data.empty or "Close" not in data.columns:
+        raise ValueError("No market data found for " + symbol)
+
+    data = data.dropna(subset=["Close"]).copy()
+
+    if data.empty:
+        raise ValueError("No valid closing prices found.")
+
+    return symbol, data
+
+
+def stock_summary(symbol, company_name=None):
+    symbol, data = fetch_stock_history(symbol, "5d")
+
+    latest = data.iloc[-1]
+    previous = data.iloc[-2] if len(data) > 1 else latest
+
+    close = float(latest["Close"])
+    previous_close = float(previous["Close"])
+    change = close - previous_close
+
+    return {
+        "symbol": symbol,
+        "name": company_name or symbol,
+        "price": round(close, 2),
+        "change": round(change, 2),
+        "change_pct": round(
+            change / previous_close * 100, 2
+        ) if previous_close else 0,
+        "volume": int(latest["Volume"])
+        if pd.notna(latest.get("Volume")) else 0,
+        "date": latest.name.strftime("%Y-%m-%d")
+    }
+
+
+@app.route("/api/stock/<symbol>")
+def api_stock(symbol):
+    try:
+        period = request.args.get("period", "1y")
+        symbol, data = fetch_stock_history(symbol, period)
+
+        latest = data.iloc[-1]
+        previous = data.iloc[-2] if len(data) > 1 else latest
+
+        close = float(latest["Close"])
+        previous_close = float(previous["Close"])
+        change = close - previous_close
+
+        prices = []
+
+        for date, row in data.iterrows():
+            prices.append({
+                "date": date.strftime("%Y-%m-%d"),
+                "close": round(float(row["Close"]), 2),
+                "volume": int(row["Volume"])
+                if pd.notna(row["Volume"]) else 0
+            })
+
+        return jsonify({
+            "symbol": symbol,
+            "latest_price": round(close, 2),
+            "change": round(change, 2),
+            "change_pct": round(
+                change / previous_close * 100, 2
+            ) if previous_close else 0,
+            "volume": int(latest["Volume"])
+            if pd.notna(latest.get("Volume")) else 0,
+            "last_updated": latest.name.strftime("%Y-%m-%d"),
+            "prices": prices
+        })
+
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 400
+
+
+@app.route("/api/watchlist")
+def api_watchlist():
+    results = []
+
+    for symbol, name in DASHBOARD_WATCHLIST.items():
+        try:
+            results.append(stock_summary(symbol, name))
+        except Exception:
+            results.append({
+                "symbol": symbol,
+                "name": name,
+                "error": "Quote temporarily unavailable"
+            })
+
+    return jsonify({"stocks": results})  
+
+
+@app.route("/api/prediction-comparison/<symbol>")
+def api_prediction_comparison(symbol):
+    try:
+        symbol, data = fetch_stock_history(symbol, "1y")
+        close = data["Close"].dropna().astype(float)
+
+        horizon = 7
+
+        frame = pd.DataFrame({"close": close})
+        frame["target"] = frame["close"].shift(-horizon)
+        frame = frame.dropna()
+
+        if len(frame) < 60:
+            raise ValueError("Not enough historical data.")
+
+        split = int(len(frame) * 0.8)
+
+        # Keep a gap to avoid overlapping training targets
+        train = frame.iloc[:split - horizon]
+        test = frame.iloc[split:].tail(30)
+
+        if train.empty or test.empty:
+            raise ValueError("Not enough data for comparison.")
+
+        model = LinearRegression()
+        model.fit(train[["close"]], train["target"])
+
+        predictions = model.predict(test[["close"]])
+        actual = test["target"].to_numpy()
+
+        rmse = float(np.sqrt(mean_squared_error(actual, predictions)))
+        mae = float(np.mean(np.abs(actual - predictions)))
+
+        target_dates = close.index[horizon:]
+        target_dates = target_dates[frame.index.get_indexer(test.index)]
+
+        return jsonify({
+            "symbol": symbol,
+            "model": "Linear Regression",
+            "rmse": round(rmse, 2),
+            "mae": round(mae, 2),
+            "dates": [d.strftime("%Y-%m-%d") for d in target_dates],
+            "actual": [round(float(v), 2) for v in actual],
+            "predicted": [round(float(v), 2) for v in predictions],
+            "note": "Historical comparison, not a guarantee of future performance."
+        })
+
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 400
+
+
 @app.route('/insertintotable',methods = ['POST'])
 def insertintotable():
     nm = request.form['nm']
 
     #**************** FUNCTIONS TO FETCH DATA ***************************
+   
     def get_historical(quote):
         end = datetime.now()
-        start = datetime(end.year-2,end.month,end.day)
-        data = yf.download(quote, start=start, end=end)
-        df = pd.DataFrame(data=data)
-        df.to_csv(''+quote+'.csv')
-        if(df.empty):
-            ts = TimeSeries(key='N6A6QT6IBFJOPJ70',output_format='pandas')
-            data, meta_data = ts.get_daily_adjusted(symbol='NSE:'+quote, outputsize='full')
-            #Format df
-            #Last 2 yrs rows => 502, in ascending order => ::-1
-            data=data.head(503).iloc[::-1]
-            data=data.reset_index()
-            #Keep Required cols only
-            df=pd.DataFrame()
-            df['Date']=data['date']
-            df['Open']=data['1. open']
-            df['High']=data['2. high']
-            df['Low']=data['3. low']
-            df['Close']=data['4. close']
-            df['Adj Close']=data['5. adjusted close']
-            df['Volume']=data['6. volume']
-            df.to_csv(''+quote+'.csv',index=False)
+        start = datetime(end.year - 2, end.month, end.day)
+
+        data = yf.download(
+            quote,
+            start=start,
+            end=end,
+            auto_adjust=False,
+            progress=False
+        )
+
+        if data.empty:
+            raise ValueError("No stock data found for " + quote)
+
+        # Handle newer yfinance column formats
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = data.columns.get_level_values(0)
+
+        # Create a clean CSV with Date as a regular column
+        data = data.reset_index()
+        data.columns.name = None
+        data.to_csv(quote + ".csv", index=False)
+
         return
 
     #******************** ARIMA SECTION ********************
@@ -472,7 +651,8 @@ def insertintotable():
 
 
         arima_pred, error_arima=ARIMA_ALGO(df)
-        lstm_pred, error_lstm=LSTM_ALGO(df)
+        lstm_pred = 0.0
+        error_lstm = 0.0
         df, lr_pred, forecast_set,mean,error_lr=LIN_REG_ALGO(df)
         # Twitter Lookup is no longer free in Twitter's v2 API
         # polarity,tw_list,tw_pol,pos,neg,neutral = retrieving_tweets_polarity(quote)
@@ -492,6 +672,7 @@ def insertintotable():
 if __name__ == '__main__':
    app.run()
    
+
 
 
 
